@@ -12,6 +12,9 @@ on:
       duree_max_minutes:
         description: "Durée max de scraping par lot (minutes, max 330)"
         default: "320"
+      metiers:
+        description: 'Optionnel : seulement ces métiers (JSON, ex. ["architecte"]). Vide = tous les métiers.'
+        default: ""
 
 permissions:
   contents: read
@@ -25,10 +28,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: plan
+        env:
+          METIERS: ${{ github.event.inputs.metiers }}
         run: |
           DEPS='${{ github.event.inputs.departements || '["75","92","93","94","77","78","91","95"]' }}'
           PROF="${{ github.event.inputs.profondeur || '15' }}"
-          echo "matrice=$(python3 scripts/make_queries.py plan "$DEPS" "$PROF")" >> "$GITHUB_OUTPUT"
+          echo "matrice=$(python3 scripts/make_queries.py plan "$DEPS" "$PROF" "$METIERS")" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
           name: lots
