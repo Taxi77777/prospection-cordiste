@@ -38,20 +38,21 @@ def communes(dep):
     return [(v, SEUIL_GRANDE) for v in ZONES.get(dep, [])]
 
 
-def requetes(dep, classe):
+def requetes(dep, classe, metiers=None):
+    metiers = metiers or METIERS
     lignes = []
     for ville, pop in communes(dep):
         grande = dep == "75" or pop >= SEUIL_GRANDE
         if (classe == "g") != grande:
             continue
-        for metier in METIERS:
+        for metier in metiers:
             texte = f"{metier} {ville}" + ("" if dep == "75" else f" {dep}")
             lignes.append(f"{texte}#!#{dep}|{metier}|{ville}")
     return lignes
 
 
-def lots(dep, classe):
-    lignes = requetes(dep, classe)
+def lots(dep, classe, metiers=None):
+    lignes = requetes(dep, classe, metiers)
     n = TAILLE_LOT[classe]
     return [lignes[i:i + n] for i in range(0, len(lignes), n)]
 
@@ -61,12 +62,14 @@ def main():
     if mode == "plan":
         deps = json.loads(sys.argv[2])
         prof = sys.argv[3] if len(sys.argv) > 3 else "15"
+        # 4e argument optionnel : liste JSON de metiers pour ne chercher que ceux-la
+        metiers = json.loads(sys.argv[4]) if len(sys.argv) > 4 and sys.argv[4].strip() else None
         import os
         os.makedirs("lots", exist_ok=True)
         matrice, total = [], 0
         for dep in deps:
             for classe in ("g", "p"):
-                for i, lot in enumerate(lots(dep, classe)):
+                for i, lot in enumerate(lots(dep, classe, metiers)):
                     ident = f"{dep}-{classe}-{i}"
                     # les requetes de chaque lot sont figees ici (meme liste pour tous les jobs)
                     with open(f"lots/{ident}.txt", "w", encoding="utf-8") as f:
