@@ -108,6 +108,14 @@ def domaine(site):
     return d[4:] if d.startswith("www.") else d
 
 
+def cle_entreprise(row):
+    """Site complet (domaine + chemin : chaque agence Foncia / Orpi... a sa propre page), sinon nom + adresse."""
+    site = row.get("website", "")
+    if site:
+        return domaine(site) + urlparse(site if site.startswith("http") else "https://" + site).path.lower().rstrip("/")
+    return (row.get("title", "") + row.get("address", "")).lower()
+
+
 def completer(row):
     site = row.get("website", "")
     found = fouiller_site(site)
@@ -156,11 +164,10 @@ def main():
     a_faire, vus = {}, set()
     for i, row in enumerate(rows):
         row["source_email"] = "Google Maps" if EMAIL_RE.search(row.get("emails", "")) else ""
-        cle = domaine(row["website"]) if row.get("website") else (row.get("title", "") + row.get("address", "")).lower()
         if row["source_email"]:
-            vus.add(cle)
+            vus.add(cle_entreprise(row))
     for i, row in enumerate(rows):
-        cle = domaine(row["website"]) if row.get("website") else (row.get("title", "") + row.get("address", "")).lower()
+        cle = cle_entreprise(row)
         if not row["source_email"] and cle not in vus and cle not in a_faire:
             a_faire[cle] = i
     print(f"{len(rows)} fiches, {len(a_faire)} entreprises sans e-mail a completer")
