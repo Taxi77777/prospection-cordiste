@@ -12,6 +12,7 @@ import sys
 from collections import Counter
 
 from openpyxl import Workbook
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
@@ -50,6 +51,15 @@ def extraire_emails(champ: str):
     return vus
 
 
+def propre(v):
+    """Texte accepte par Excel : sans caracteres de controle, 30 000 caracteres max,
+    et jamais interprete comme une formule (openpyxl traite '=...' comme une formule)."""
+    if not isinstance(v, str):
+        return v
+    v = ILLEGAL_CHARACTERS_RE.sub("", v)[:MAX_CELLULE]
+    return " " + v if v.startswith("=") else v
+
+
 def adresse_detaillee(brut: str):
     try:
         d = json.loads(brut) if brut else {}
@@ -85,8 +95,22 @@ def domaine(site):
     return d
 
 
+def site_complet(site):
+    """Domaine + chemin (ex. foncia.com/agence-immobiliere/paris-14) : distingue les agences d'un meme reseau."""
+    from urllib.parse import urlparse
+    d = domaine(site)
+    if not d:
+        return ""
+    chemin = urlparse(site if site.startswith("http") else "https://" + site).path.lower().rstrip("/")
+    return d + chemin
+
+
 def nom_norm(n):
     return re.sub(r"[^a-z0-9]", "", (n or "").lower())
+
+
+MAX_NOMS_PAR_CLE = 3  # au-dela, le site / telephone est partage par un reseau (Foncia, Orpi...) : pas une seule entreprise
+MAX_CELLULE = 30000  # limite Excel : 32 767 caracteres par cellule
 
 
 class Groupes:
@@ -128,8 +152,17 @@ def main():
             "Note Google": row.get("review_rating", ""),
             "Nb avis": row.get("review_count", ""),
             "Fiche Google Maps": row.get("link", ""),
-            "_place": row.get("place_id") or row.get("link") or "",
+            "_place": row.get("cid") or row.get("data_id") or row.get("place_id") or row.get("link") or "",
         })
+
+    # Sites et telephones partages par beaucoup d'entreprises differentes (reseaux d'agences, standards) :
+    # ils ne servent pas a regrouper, sinon toutes les agences Foncia / Orpi... deviendraient une seule ligne.
+    noms_par_cle = {}
+    for f in fiches:
+        n = nom_norm(f["Entreprise"])[:12]
+        for c in ("d:" + domaine(f["Site web"]), "t:" + normaliser_tel(f["Téléphone"])):
+            noms_par_cle.setdefault(c, set()).add(n)
+    partagee = {c for c, noms in noms_par_cle.items() if len(noms) > MAX_NOMS_PAR_CLE}
 
     # 1) regroupement : une entreprise = meme fiche Maps, meme site, meme telephone, meme e-mail ou meme nom + code postal
     g = Groupes()
@@ -138,8 +171,12 @@ def main():
         if f["_place"]:
             cles.append("p:" + f["_place"])
         if domaine(f["Site web"]):
-            cles.append("d:" + domaine(f["Site web"]))
-        if normaliser_tel(f["Téléphone"]):
+            c = "d:" + domaine(f["Site web"])
+            if c not in partagee:
+                cles.append(c)
+            elif site_complet(f["Site web"]) != domaine(f["Site web"]):
+                cles.append("u:" + site_complet(f["Site web"]))  # page propre a l'agence du reseau
+        if normaliser_tel(f["Téléphone"]) and "t:" + normaliser_tel(f["Téléphone"]) not in partagee:
             cles.append("t:" + normaliser_tel(f["Téléphone"]))
         if nom_norm(f["Entreprise"]) and (f["Code postal"] or f["Adresse"]):
             cles.append("n:" + nom_norm(f["Entreprise"]) + ":" + (f["Code postal"] or nom_norm(f["Adresse"])))
@@ -167,7 +204,7 @@ def main():
         e["Métier recherché"] = ", ".join(e["_metiers"])
         if e["_emails"]:
             e["E-mail"] = e["_emails"][0]
-            e["Autres e-mails"] = "; ".join(e["_emails"][1:])
+            e["Autres e-mails"] = "; ".join(e["_emails"][1:])[:MAX_CELLULE]
             e["Source de l'e-mail"] = ", ".join(e["_sources"])
             contacts.append(e)
         else:
@@ -185,7 +222,7 @@ def main():
             c.font, c.fill = entete_style, entete_fond
             c.alignment = Alignment(vertical="center")
         for l in lignes:
-            ws.append([l.get(col, "") for col in colonnes])
+            ws.append([propre(l.get(col, "")) for col in colonnes])
         ws.freeze_panes = "A2"
         ws.auto_filter.ref = ws.dimensions
         for i, col in enumerate(colonnes, 1):
