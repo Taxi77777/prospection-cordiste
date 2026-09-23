@@ -4,7 +4,8 @@ Modifier ces listes suffit pour changer la prospection : le workflow regenere
 les requetes a chaque lancement.
 """
 
-# Corps de metier susceptibles de commander des travaux de cordiste sur fibrociment.
+# Donneurs d'ordre (clients directs, pas de sous-traitance) susceptibles de commander
+# des travaux de cordiste sur fibrociment.
 # Classes par priorite : les premiers sont traites en premier dans chaque departement.
 METIERS = [
     "syndic de copropriété",
@@ -12,14 +13,9 @@ METIERS = [
     "office HLM",
     "administrateur de biens",
     "gestion locative",
-    "entreprise de désamiantage",
-    "diagnostic amiante",
-    "couvreur",
-    "entreprise d'étanchéité toiture",
-    "ravalement de façade",
-    "maître d'oeuvre bâtiment",
+    "gestionnaire immobilier",
+    "foncière immobilière",
     "agence immobilière",
-    "architecte",
 ]
 
 ZONES = {
