@@ -1,0 +1,115 @@
+name: Excel final combiné (toutes les recherches -> un seul fichier sans doublon)
+
+# Se lance tout seul quand une recherche se termine. Si d'autres recherches tournent encore,
+# il ne fait rien : c'est la dernière qui déclenche le fichier final.
+# Il reprend les résultats (chiffrés) de toutes les recherches réussies des 36 dernières heures,
+# les fusionne, complète les e-mails manquants, dédoublonne et envoie UN seul Excel.
+on:
+  workflow_run:
+    workflows: ["Prospection cordiste fibrociment (Google Maps -> Excel -> e-mail)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: "Optionnel : id des recherches à fusionner, séparés par des espaces (vide = automatique)"
+        default: ""
+      minutes_enrichissement:
+        description: "Temps max pour compléter les e-mails manquants (minutes, max 300)"
+        default: "300"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: excel-final
+  cancel-in-progress: true
+
+jobs:
+  verifier:
+    name: Toutes les recherches sont-elles finies ?
+    runs-on: ubuntu-latest
+    outputs:
+      runs: ${{ steps.v.outputs.runs }}
+    steps:
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUNS: ${{ github.event.inputs.runs }}
+        run: |
+          if [ -n "$RUNS" ]; then echo "runs=$RUNS" >> "$GITHUB_OUTPUT"; exit 0; fi
+          gh run list -R "$GITHUB_REPOSITORY" -w prospection.yml -L 30 \
+            --json databaseId,status,conclusion,createdAt > runs.json
+          python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json, datetime
+          runs = json.load(open("runs.json"))
+          now = datetime.datetime.now(datetime.timezone.utc)
+          recent = [r for r in runs if now - datetime.datetime.fromisoformat(r["createdAt"].replace("Z", "+00:00")) < datetime.timedelta(hours=36)]
+          en_cours = [r for r in recent if r["status"] != "completed"]
+          ok = [str(r["databaseId"]) for r in recent if r["status"] == "completed" and r["conclusion"] in ("success", "failure")]
+          if en_cours:
+              print("runs=")  # une recherche tourne encore : c'est elle qui lancera le fichier final
+          else:
+              print("runs=" + " ".join(ok))
+          EOF
+          cat "$GITHUB_OUTPUT"
+
+  excel-final:
+    name: Fusion + Excel + e-mail
+    needs: verifier
+    if: needs.verifier.outputs.runs != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Récupérer les résultats des recherches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUNS: ${{ needs.verifier.outputs.runs }}
+        run: |
+          mkdir -p resultats
+          for id in $RUNS; do
+            echo "Recherche $id"
+            gh run download "$id" -R "$GITHUB_REPOSITORY" -p 'resultats-*' -D "resultats/$id" || echo "  rien récupéré pour $id"
+          done
+          find resultats -name '*.enc' | wc -l
+
+      - name: Déchiffrer
+        env:
+          CLE: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          mkdir -p csv
+          n=0
+          for f in $(find resultats -name '*.enc'); do
+            n=$((n+1))
+            mkdir -p "csv/$n"
+            openssl enc -d -aes-256-cbc -pbkdf2 -in "$f" -pass env:CLE | tar xzf - -C "csv/$n"
+          done
+          find csv -name '*.csv' -size +0 | xargs -r wc -l | tail -1
+
+      - name: Compléter les e-mails manquants (sites web + moteurs de recherche)
+        run: |
+          pip install openpyxl==3.1.5 requests==2.32.3
+          mkdir -p enrichi
+          python scripts/enrich.py csv enrichi/resultats-enrichis.csv "${{ github.event.inputs.minutes_enrichissement || '300' }}"
+
+      - name: Construire le fichier Excel (sans doublons)
+        run: |
+          FICHIER="prospects-cordiste-fibrociment-IDF-FINAL-$(date +%Y-%m-%d).xlsx"
+          echo "FICHIER=$FICHIER" >> "$GITHUB_ENV"
+          python scripts/build_excel.py enrichi "$FICHIER"
+          echo "### Résultat" >> "$GITHUB_STEP_SUMMARY"
+          cat stats.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Envoyer l'Excel par e-mail
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          MAIL_TITRE: "FICHIER FINAL COMBINE"
+        run: python scripts/send_email.py "$FICHIER"
