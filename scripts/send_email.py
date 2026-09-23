@@ -22,7 +22,8 @@ def main():
     date = datetime.now().strftime("%d/%m/%Y")
 
     msg = EmailMessage()
-    msg["Subject"] = f"Prospects cordiste fibrociment IDF - {stats.split('|')[0].strip()} - {date}"
+    titre = os.environ.get("MAIL_TITRE", "").strip()
+    msg["Subject"] = (f"[{titre}] " if titre else "") + f"Prospects cordiste fibrociment IDF - {stats.split('|')[0].strip()} - {date}"
     msg["From"] = user
     msg["To"] = dest
     msg.set_content(
