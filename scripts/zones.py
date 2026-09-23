@@ -16,6 +16,8 @@ METIERS = [
     "gestionnaire immobilier",
     "foncière immobilière",
     "agence immobilière",
+    "architecte",
+    "maître d'oeuvre bâtiment",
 ]
 
 ZONES = {
