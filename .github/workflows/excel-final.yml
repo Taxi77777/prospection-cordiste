@@ -46,7 +46,11 @@ jobs:
           now = datetime.datetime.now(datetime.timezone.utc)
           recent = [r for r in runs if now - datetime.datetime.fromisoformat(r["createdAt"].replace("Z", "+00:00")) < datetime.timedelta(hours=36)]
           en_cours = [r for r in recent if r["status"] != "completed"]
-          ok = [str(r["databaseId"]) for r in recent if r["status"] == "completed" and r["conclusion"] in ("success", "failure")]
+          # "cancelled" = un lot a depasse le temps max : les autres lots sont bons, on les garde.
+          # Recherches a ne jamais reprendre (ancienne liste de metiers) :
+          IGNORER = {"35882540366"}
+          ok = [str(r["databaseId"]) for r in recent if r["status"] == "completed"
+                and r["conclusion"] in ("success", "failure", "cancelled") and str(r["databaseId"]) not in IGNORER]
           if en_cours:
               print("runs=")  # une recherche tourne encore : c'est elle qui lancera le fichier final
           else:
