@@ -64,6 +64,8 @@ def main():
         prof = sys.argv[3] if len(sys.argv) > 3 else "15"
         # 4e argument optionnel : liste JSON de metiers pour ne chercher que ceux-la
         metiers = json.loads(sys.argv[4]) if len(sys.argv) > 4 and sys.argv[4].strip() else None
+        # 5e argument optionnel : liste JSON de lots a refaire (ex. ["77-p-3","78-g-0"])
+        seulement = set(json.loads(sys.argv[5])) if len(sys.argv) > 5 and sys.argv[5].strip() else None
         import os
         os.makedirs("lots", exist_ok=True)
         matrice, total = [], 0
@@ -71,6 +73,8 @@ def main():
             for classe in ("g", "p"):
                 for i, lot in enumerate(lots(dep, classe, metiers)):
                     ident = f"{dep}-{classe}-{i}"
+                    if seulement and ident not in seulement:
+                        continue
                     # les requetes de chaque lot sont figees ici (meme liste pour tous les jobs)
                     with open(f"lots/{ident}.txt", "w", encoding="utf-8") as f:
                         f.write("\n".join(lot) + "\n")
