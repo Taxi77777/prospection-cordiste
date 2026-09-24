@@ -13,10 +13,13 @@ on:
         description: "Profondeur de défilement Google Maps pour Paris et les villes de +15 000 hab. (les petites communes : 3)"
         default: "15"
       duree_max_minutes:
-        description: "Durée max de scraping par lot (minutes, max 330)"
-        default: "320"
+        description: "Durée max de scraping par lot (minutes, max 300)"
+        default: "300"
       metiers:
         description: 'Optionnel : seulement ces métiers (JSON, ex. ["architecte"]). Vide = tous les métiers.'
+        default: ""
+      lots:
+        description: 'Optionnel : refaire seulement ces lots (JSON, ex. ["77-p-3","78-g-0"]). Vide = tous.'
         default: ""
 
 permissions:
@@ -33,10 +36,11 @@ jobs:
       - id: plan
         env:
           METIERS: ${{ github.event.inputs.metiers }}
+          LOTS: ${{ github.event.inputs.lots }}
         run: |
           DEPS='${{ github.event.inputs.departements || '["75","92","93","94","77","78","91","95"]' }}'
           PROF="${{ github.event.inputs.profondeur || '15' }}"
-          echo "matrice=$(python3 scripts/make_queries.py plan "$DEPS" "$PROF" "$METIERS")" >> "$GITHUB_OUTPUT"
+          echo "matrice=$(python3 scripts/make_queries.py plan "$DEPS" "$PROF" "$METIERS" "$LOTS")" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
           name: lots
@@ -68,11 +72,16 @@ jobs:
 
       - name: Scraper Google Maps + e-mails des sites
         run: |
-          DUREE="${{ github.event.inputs.duree_max_minutes || '320' }}"
+          DUREE="${{ github.event.inputs.duree_max_minutes || '300' }}"
+          [ "$DUREE" -gt 300 ] && DUREE=300
           docker pull gosom/google-maps-scraper:latest
           # Le scraper s'arrête seul quand toutes les recherches du lot sont faites (5 min d'inactivité),
           # ou au bout de la durée max : on garde tout ce qui a déjà été trouvé.
-          timeout "${DUREE}m" docker run --name gms \
+          # Arrêt forcé du conteneur à la durée max (sinon un scraper bloqué fait dépasser la limite GitHub
+          # et tout le lot est perdu).
+          ( sleep "${DUREE}m"; docker kill gms ) >/dev/null 2>&1 &
+          GARDE=$!
+          timeout -k 1m "$((DUREE + 2))m" docker run --name gms \
             -v "$PWD/queries.txt:/queries.txt:ro" \
             -v "$PWD/out:/out" \
             gosom/google-maps-scraper:latest \
@@ -84,7 +93,8 @@ jobs:
             -c 4 \
             -resume \
             -exit-on-inactivity 5m || echo "Arrêt (fin ou durée max atteinte)"
-          docker stop gms >/dev/null 2>&1 || true
+          kill "$GARDE" 2>/dev/null || true
+          docker kill gms >/dev/null 2>&1 || true
           sudo chown -R "$USER" out || true
           wc -l out/*.csv || true
 
@@ -95,6 +105,11 @@ jobs:
         env:
           CLE: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: |
+          # toujours sauver ce qui a été trouvé, même si le scraping a été interrompu
+          docker kill gms >/dev/null 2>&1 || true
+          mkdir -p out
+          sudo chown -R "$USER" out || true
+          sudo chmod -R u+rw out || true
           touch out/vide.csv
           tar czf resultats.tgz out/*.csv
           openssl enc -aes-256-cbc -pbkdf2 -salt -in resultats.tgz -out resultats-${{ matrix.id }}.enc -pass env:CLE
