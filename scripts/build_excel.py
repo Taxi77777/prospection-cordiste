@@ -28,6 +28,15 @@ MAUVAIS_DOMAINES = (
 )
 MAUVAIS_DEBUTS = ("nom@", "name@", "prenom", "votre", "your", "email@", "user@", "xxx", "exemple@", "example@")
 
+# Enseignes/entreprises a exclure des resultats (demande client) : partenariats/navettes propres
+# deja en place, pas des prospects utiles.
+NOMS_EXCLUS = ("akena", "cheval blanc", "moxy", "village nature", "villages nature")
+
+
+def nom_exclu(nom: str) -> bool:
+    n = (nom or "").lower()
+    return any(mc in n for mc in NOMS_EXCLUS)
+
 
 def email_valide(e: str) -> bool:
     e = e.lower()
@@ -134,6 +143,8 @@ def main():
     dossier, sortie = sys.argv[1], sys.argv[2]
     fiches = []
     for row in lire_lignes(dossier):
+        if nom_exclu(row.get("title", "")):
+            continue
         dep, metier, ville = (row.get("input_id", "") + "||").split("|")[:3]
         cp, commune = adresse_detaillee(row.get("complete_address", ""))
         fiches.append({
