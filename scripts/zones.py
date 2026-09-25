@@ -53,3 +53,14 @@ ZONES = {
            "Taverny", "Herblay-sur-Seine", "Sannois", "Eaubonne", "Cormeilles-en-Parisis",
            "Montmorency", "Saint-Ouen-l'Aumône", "Deuil-la-Barre", "Osny"],
 }
+# Secteur Taxi Marne-la-Vallee (communes precises demandees par le client, pas tout le 77)
+ZONES["77mlv"] = [
+        "Bailly-Romainvilliers", "Brou-sur-Chantereine", "Bussy-Saint-Georges", "Bussy-Saint-Martin",
+        "Carnetin", "Chalifert", "Champs-sur-Marne", "Chanteloup-en-Brie", "Chessy", "Collegien",
+        "Conches-sur-Gondoire", "Coupvray", "Courtry", "Croissy-Beaubourg", "Dampmart",
+        "Emerainville", "Esbly", "Ferrieres-en-Brie", "Guermantes", "Jablines", "Jossigny",
+        "Lagny-sur-Marne", "Lognes", "Magny-le-Hongre", "Meaux", "Montevrain", "Montry", "Noisiel",
+        "Ozoir-la-Ferriere", "Pomponne", "Pontault-Combault", "Pontcarre", "Roissy-en-Brie",
+        "Saint-Germain-sur-Morin", "Saint-Thibault-des-Vignes", "Serris", "Thorigny-sur-Marne",
+        "Torcy", "Vaires-sur-Marne", "Villeneuve-le-Comte", "Villeneuve-Saint-Denis",
+]
