@@ -1,4 +1,5 @@
-name: Prospection cordiste fibrociment (Google Maps -> Excel -> e-mail)
+name: Prospection B2B (Google Maps -> Excel -> e-mail)
+run-name: "${{ contains(github.event.inputs.departements, '77mlv') && 'TAXI Marne-la-Vallee' || 'Cordiste fibrociment' }} (${{ github.event.inputs.departements }})"
 
 # Quand cette recherche est finie, le workflow "Excel final combine" se lance tout seul :
 # il fusionne les resultats, complete les e-mails et envoie UN seul Excel.
