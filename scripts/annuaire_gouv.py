@@ -1,11 +1,12 @@
 """Complete Google Maps par l'annuaire officiel des entreprises francaises (INSEE/Sirene, data.gouv.fr).
 
 Objectif : uniquement des entreprises qui ont une vraie chance d'avoir un site web (donc un e-mail
-trouvable), pas du volume brut. On couvre large (secteurs C a N, cf. SECTIONS) mais on exclut les
-secteurs domines par des micro-activites individuelles sans presence en ligne : commerce de detail
-grand public, restauration/fast-food, hebergement, sport/loisirs, coiffure/beaute, sante, education,
-administration publique, agriculture. Communes des zones "restreintes" de zones.py (ex. 77mlv)
-uniquement, jamais un departement entier (voir ZONES_RESTREINTES).
+trouvable), pas du volume brut. On couvre large (secteurs C a N + I, cf. SECTIONS) mais on exclut
+les secteurs domines par des micro-activites individuelles sans presence en ligne : commerce de
+detail grand public, restauration/fast-food (mais on garde l'hebergement : hotels), sport/loisirs,
+coiffure/beaute, sante, education, administration publique, agriculture. Communes des zones
+"restreintes" de zones.py (ex. 77mlv) uniquement, jamais un departement entier (voir
+ZONES_RESTREINTES).
 
 Source officielle et gratuite, sans risque de blocage anti-robot (contrairement a un site comme
 PagesJaunes qui bloque tres vite les robots). Ne fournit pas d'e-mail ni de site web : les lignes
@@ -31,11 +32,12 @@ from zones import ZONES
 ZONES_RESTREINTES = ("75", "77mlv")
 
 # Sections NAF (lettre) couvertes : le monde de l'entreprise "professionnelle" au sens large
-# (industrie, BTP, commerce, transport, tech, finance, immobilier, conseil, services aux
-# entreprises), qui a une vraie chance d'avoir un site web. On laisse de cote : A agriculture,
-# B extraction, I hebergement/restauration, O administration publique, P enseignement,
-# Q sante/action sociale, R arts/spectacles/loisirs, S autres services (coiffure, etc.) :
-# ces secteurs sont domines par des tres petites activites individuelles, rarement en ligne.
+# (industrie, BTP, commerce, transport, hebergement/hotels, tech, finance, immobilier, conseil,
+# services aux entreprises), qui a une vraie chance d'avoir un site web. On laisse de cote :
+# A agriculture, B extraction, O administration publique, P enseignement, Q sante/action sociale,
+# R arts/spectacles/loisirs, S autres services (coiffure, etc.) : ces secteurs sont domines par des
+# tres petites activites individuelles, rarement en ligne. Le "I" (hebergement + restauration) est
+# garde pour les hotels, mais la restauration/fast-food en est retiree via EXCLURE_PREFIXES.
 SECTIONS = [
     ("C", "Industrie manufacturière"),
     ("D", "Électricité, gaz, vapeur"),
@@ -43,6 +45,7 @@ SECTIONS = [
     ("F", "Construction / BTP"),
     ("G", "Commerce"),
     ("H", "Transports et entreposage"),
+    ("I", "Hébergement (hôtels)"),
     ("J", "Information et communication"),
     ("K", "Activités financières et d'assurance"),
     ("L", "Activités immobilières"),
@@ -50,8 +53,8 @@ SECTIONS = [
     ("N", "Activités de services administratifs et de soutien"),
 ]
 
-# Filet de securite supplementaire, au cas ou une de ces sections contiendrait quand meme
-# une activite grand public sans interet (prefixes de code NAF/APE a exclure).
+# Filet de securite : prefixes de code NAF/APE grand public a exclure malgre l'inclusion de leur
+# section (ex. la restauration est dans la meme section que l'hebergement/hotels qu'on veut garder).
 EXCLURE_PREFIXES = (
     "56.",    # restauration et debits de boissons (fast-food, restaurants, bars, cafes)
     "93.1",   # activites sportives (salles de sport, clubs)
