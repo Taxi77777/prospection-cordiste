@@ -1,13 +1,17 @@
 """Complete Google Maps par l'annuaire officiel des entreprises francaises (INSEE/Sirene, data.gouv.fr).
 
-Ratisse large : TOUTES les entreprises actives des communes des zones "restreintes" de zones.py
-(ex. 77mlv), sauf une petite liste d'activites grand public sans interet pour la prospection B2B
-(fast-food/restauration, salles de sport/loisirs, coiffure) -> voir EXCLURE_PREFIXES.
-Jamais un departement entier (voir ZONES_RESTREINTES). Source officielle et gratuite, sans risque
-de blocage anti-robot (contrairement a un site comme PagesJaunes qui bloque tres vite les robots).
-Ne fournit pas d'e-mail ni de site web : les lignes produites ont le meme format que celles du
-scraper Google Maps, sans e-mail, pour que scripts/enrich.py cherche l'e-mail (site + moteurs de
-recherche) exactement comme pour les fiches Google Maps sans e-mail.
+Objectif : uniquement des entreprises qui ont une vraie chance d'avoir un site web (donc un e-mail
+trouvable), pas du volume brut. On couvre large (secteurs C a N, cf. SECTIONS) mais on exclut les
+secteurs domines par des micro-activites individuelles sans presence en ligne : commerce de detail
+grand public, restauration/fast-food, hebergement, sport/loisirs, coiffure/beaute, sante, education,
+administration publique, agriculture. Communes des zones "restreintes" de zones.py (ex. 77mlv)
+uniquement, jamais un departement entier (voir ZONES_RESTREINTES).
+
+Source officielle et gratuite, sans risque de blocage anti-robot (contrairement a un site comme
+PagesJaunes qui bloque tres vite les robots). Ne fournit pas d'e-mail ni de site web : les lignes
+produites ont le meme format que celles du scraper Google Maps, sans e-mail, pour que
+scripts/enrich.py cherche l'e-mail (site + moteurs de recherche) exactement comme pour les fiches
+Google Maps sans e-mail.
 
 Usage : python scripts/annuaire_gouv.py <departements_json> <dossier_sortie>
 """
@@ -26,8 +30,28 @@ from zones import ZONES
 # traitees ici, pour ne jamais elargir a un departement entier par erreur.
 ZONES_RESTREINTES = ("75", "77mlv")
 
-# Activites grand public sans interet pour un client B2B (taxi/transfert professionnel) :
-# prefixes de code NAF/APE a exclure des resultats.
+# Sections NAF (lettre) couvertes : le monde de l'entreprise "professionnelle" au sens large
+# (industrie, BTP, commerce, transport, tech, finance, immobilier, conseil, services aux
+# entreprises), qui a une vraie chance d'avoir un site web. On laisse de cote : A agriculture,
+# B extraction, I hebergement/restauration, O administration publique, P enseignement,
+# Q sante/action sociale, R arts/spectacles/loisirs, S autres services (coiffure, etc.) :
+# ces secteurs sont domines par des tres petites activites individuelles, rarement en ligne.
+SECTIONS = [
+    ("C", "Industrie manufacturière"),
+    ("D", "Électricité, gaz, vapeur"),
+    ("E", "Eau, assainissement, déchets"),
+    ("F", "Construction / BTP"),
+    ("G", "Commerce"),
+    ("H", "Transports et entreposage"),
+    ("J", "Information et communication"),
+    ("K", "Activités financières et d'assurance"),
+    ("L", "Activités immobilières"),
+    ("M", "Activités spécialisées, scientifiques et techniques"),
+    ("N", "Activités de services administratifs et de soutien"),
+]
+
+# Filet de securite supplementaire, au cas ou une de ces sections contiendrait quand meme
+# une activite grand public sans interet (prefixes de code NAF/APE a exclure).
 EXCLURE_PREFIXES = (
     "56.",    # restauration et debits de boissons (fast-food, restaurants, bars, cafes)
     "93.1",   # activites sportives (salles de sport, clubs)
@@ -37,7 +61,7 @@ EXCLURE_PREFIXES = (
 
 GEO_API = "https://geo.api.gouv.fr/communes"
 RECHERCHE_API = "https://recherche-entreprises.api.gouv.fr/search"
-PAGES_MAX = 40  # ratisse large : jusqu'a 1000 entreprises actives par commune
+PAGES_MAX = 12  # jusqu'a 300 entreprises actives par commune et par section
 
 
 def get_json(url, essais=3):
@@ -69,11 +93,12 @@ def code_insee(nom_commune, dep):
     return data[0]["code"] if data else None
 
 
-def entreprises(code_commune):
+def entreprises(code_commune, section):
     lignes, page = [], 1
     while page <= PAGES_MAX:
         q = urllib.parse.urlencode({
             "code_commune": code_commune,
+            "section_activite_principale": section,
             "etat_administratif": "A",
             "page": page,
             "per_page": 25,
@@ -94,12 +119,12 @@ def exclue(res):
     return any(code.startswith(p) for p in EXCLURE_PREFIXES)
 
 
-def ligne_csv(res, dep, ville):
+def ligne_csv(res, dep, ville, label_section):
     siege = res.get("siege") or {}
     siren = res.get("siren", "")
     return {
         "title": res.get("nom_complet") or res.get("nom_raison_sociale") or "",
-        "category": f"Annuaire entreprises : {res.get('activite_principale', '')}",
+        "category": f"Annuaire entreprises : {label_section}",
         "address": siege.get("adresse", ""),
         "complete_address": json.dumps({"postal_code": siege.get("code_postal", ""), "city": siege.get("libelle_commune", "")}),
         "phone": "",
@@ -111,7 +136,7 @@ def ligne_csv(res, dep, ville):
         "cid": "",
         "data_id": "",
         "place_id": "",
-        "input_id": f"{dep}|Annuaire entreprises|{ville}",
+        "input_id": f"{dep}|Annuaire entreprises ({label_section})|{ville}",
     }
 
 
@@ -127,16 +152,17 @@ def main():
             if not code:
                 print(f"  code INSEE introuvable pour {ville}")
                 continue
-            for res in entreprises(code):
-                siren = res.get("siren")
-                if not siren or siren in vus:
-                    continue
-                if res.get("etat_administratif") != "A":
-                    continue
-                if exclue(res):
-                    continue
-                vus.add(siren)
-                lignes.append(ligne_csv(res, dep, ville))
+            for section, label in SECTIONS:
+                for res in entreprises(code, section):
+                    siren = res.get("siren")
+                    if not siren or siren in vus:
+                        continue
+                    if res.get("etat_administratif") != "A":
+                        continue
+                    if exclue(res):
+                        continue
+                    vus.add(siren)
+                    lignes.append(ligne_csv(res, dep, ville, label))
             print(f"  {ville} : {len(vus)} entreprises cumulees")
     print(f"{len(lignes)} entreprises trouvees via l'annuaire officiel (data.gouv.fr)")
     champs = ["title", "category", "address", "complete_address", "phone", "website",
