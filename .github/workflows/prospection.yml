@@ -125,3 +125,40 @@ jobs:
           retention-days: 5
           if-no-files-found: warn
 
+
+  annuaire-gouv:
+    name: Annuaire officiel des entreprises (data.gouv.fr)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Interroger l'annuaire officiel (INSEE/Sirene)
+        run: |
+          mkdir -p out
+          python scripts/annuaire_gouv.py '${{ github.event.inputs.departements }}' out
+          wc -l out/*.csv || true
+
+      - name: Chiffrer les résultats
+        if: always()
+        env:
+          CLE: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          mkdir -p out
+          touch out/vide.csv
+          tar czf resultats.tgz out/*.csv
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in resultats.tgz -out resultats-annuairegouv.enc -pass env:CLE
+          rm -f resultats.tgz
+
+      - name: Transmettre les résultats chiffrés
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultats-annuairegouv
+          path: resultats-annuairegouv.enc
+          retention-days: 5
+          if-no-files-found: warn
