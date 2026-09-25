@@ -24,7 +24,7 @@ PROFONDEUR_PETITES = 3
 
 def communes(dep):
     """Liste (nom, population) triee par population decroissante."""
-        if dep in ("75", "77mlv"):
+    if dep in ("75", "77mlv"):
         return [(v, 100000) for v in ZONES[dep]]
     url = f"https://geo.api.gouv.fr/departements/{dep}/communes?fields=nom,population"
     for essai in range(5):
@@ -47,7 +47,7 @@ def requetes(dep, classe, metiers=None):
         if (classe == "g") != grande:
             continue
         for metier in metiers:
-        texte = f"{metier} {ville}" + ("" if dep == "75" else f" {dep_recherche}")
+            texte = f"{metier} {ville}" + ("" if dep == "75" else f" {dep_recherche}")
             lignes.append(f"{texte}#!#{dep}|{metier}|{ville}")
     return lignes
 
