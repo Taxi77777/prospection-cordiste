@@ -100,7 +100,7 @@ jobs:
         run: |
           pip install openpyxl==3.1.5 requests==2.32.3
           mkdir -p enrichi
-          python scripts/enrich.py csv enrichi/resultats-enrichis.csv "${{ github.event.inputs.minutes_enrichissement || '300' }}"
+          python -u scripts/enrich.py csv enrichi/resultats-enrichis.csv "${{ github.event.inputs.minutes_enrichissement || '300' }}"
 
       - name: Construire le fichier Excel (sans doublons)
         run: |
