@@ -6,7 +6,7 @@ name: Excel final combiné (toutes les recherches -> un seul fichier sans doublo
 # les fusionne, complète les e-mails manquants, dédoublonne et envoie UN seul Excel.
 on:
   workflow_run:
-    workflows: ["Prospection cordiste fibrociment (Google Maps -> Excel -> e-mail)"]
+    workflows: ["Prospection B2B (Google Maps -> Excel -> e-mail)"]
     types: [completed]
   workflow_dispatch:
     inputs:
