@@ -22,8 +22,8 @@ EXCLURE = re.compile(r"expertise auto|expert auto", re.I)
 
 
 def jetons(nom):
-    mots = re.findall(r"[a-z0-9]{4,}", nom.lower())
-    return [m for m in mots if m not in ("assurance", "assurances", "courtage", "conseil", "conseils", "patrimoine", "cabinet", "agence", "groupe", "france")]
+    mots = re.findall(r"[a-z0-9]{3,}", nom.lower())
+    return [m for m in mots if m not in ("assurance", "assurances", "courtage", "conseil", "conseils", "patrimoine", "cabinet", "agence", "groupe", "france", "les", "des", "sas", "sarl", "eurl")]
 
 
 def explorer(site, n=10):
