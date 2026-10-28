@@ -69,7 +69,7 @@ jobs:
           en_cours = [r for r in recent if r["status"] != "completed"]
           # "cancelled" = un lot a depasse le temps max : les autres lots sont bons, on les garde.
           # Recherches a ne jamais reprendre (ancienne liste de metiers) :
-          IGNORER = {"35882540366"}
+          IGNORER = {"35882540366", "40679912836"}
           ok = [str(r["databaseId"]) for r in recent if r["status"] == "completed"
                 and r["conclusion"] in ("success", "failure", "cancelled") and str(r["databaseId"]) not in IGNORER]
           if en_cours:

@@ -34,7 +34,6 @@ METIERS_ASSURANCE = [
     "mutuelle santé",
     "mutuelle d'assurance",
     "assurance automobile",
-    "cabinet d'expertise automobile",
 ]
 
 ZONES = {
