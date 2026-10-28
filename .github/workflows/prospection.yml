@@ -100,6 +100,8 @@ jobs:
             -c 4 \
             -resume \
             -exit-on-inactivity 5m || echo "Arrêt (fin ou durée max atteinte)"
+          # tue aussi le "sleep" du garde-fou (sinon l'etape reste bloquee jusqu'a la duree max)
+          pkill -P "$GARDE" 2>/dev/null || true
           kill "$GARDE" 2>/dev/null || true
           docker kill gms >/dev/null 2>&1 || true
           sudo chown -R "$USER" out || true
