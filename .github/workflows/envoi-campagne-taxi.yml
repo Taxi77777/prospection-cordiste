@@ -1,0 +1,22 @@
+name: Envoi campagne taxi assurances
+on:
+  workflow_dispatch:
+    inputs:
+      contacts:
+        description: 'Liste JSON [[email, entreprise, commune], ...]'
+        required: true
+permissions:
+  contents: read
+jobs:
+  envoi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Envoyer les mails
+        env:
+          CONTACTS: ${{ github.event.inputs.contacts }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+        run: python3 scripts/envoi_campagne_taxi.py
