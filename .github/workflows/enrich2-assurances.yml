@@ -1,0 +1,26 @@
+name: 2e passe e-mails assureurs (41 communes)
+on:
+  workflow_dispatch:
+    inputs:
+      sans:
+        description: 'Liste JSON [[nom, commune, site, tel], ...]'
+        required: true
+permissions:
+  contents: read
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install openpyxl==3.1.5 requests==2.32.3
+      - name: Chercher les e-mails
+        env:
+          SANS: ${{ github.event.inputs.sans }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+        run: python -u scripts/enrich2_assurances.py

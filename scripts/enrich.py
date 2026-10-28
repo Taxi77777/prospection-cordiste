@@ -103,6 +103,26 @@ def recherche(q):
     return emails, sites[:2]
 
 
+def recherche_brute(q, n=5):
+    """Comme recherche() mais renvoie jusqu'a n sites candidats."""
+    emails, sites = set(), []
+    for url in (f"https://html.duckduckgo.com/html/?q={quote_plus(q)}",
+                f"https://www.bing.com/search?q={quote_plus(q)}&setlang=fr&cc=FR"):
+        html = get(url)
+        if not html:
+            continue
+        emails |= emails_dans(html)
+        for href in re.findall(r'href="([^"]+)"', html):
+            if "duckduckgo.com/l/?" in href:
+                href = unquote(parse_qs(urlparse(href).query).get("uddg", [""])[0])
+            if href.startswith("http") and not any(i in href for i in IGNORES):
+                dom = urlparse(href).scheme + "://" + urlparse(href).netloc
+                if dom not in sites:
+                    sites.append(dom)
+        time.sleep(random.uniform(1.0, 2.5))
+    return emails, sites[:n]
+
+
 def domaine(site):
     d = urlparse(site if site.startswith("http") else "https://" + site).netloc.lower()
     return d[4:] if d.startswith("www.") else d
