@@ -20,6 +20,23 @@ METIERS = [
     "maître d'oeuvre bâtiment",
 ]
 
+# Campagne "assurance" (Taxi Marne-la-Vallee) : assureurs, assisteurs, courtiers, mutuelles.
+# Offre : taxi pour les garanties d'assistance (retour domicile apres hospitalisation ou panne,
+# conduite des enfants a l'ecole, accompagnement aux rendez-vous medicaux, rapatriement de
+# vehicule/conducteur, transport de proches...).
+METIERS_ASSURANCE = [
+    "société d'assistance",
+    "plateforme d'assistance assurance",
+    "compagnie d'assurance",
+    "agent général d'assurance",
+    "agence d'assurance",
+    "courtier en assurance",
+    "mutuelle santé",
+    "mutuelle d'assurance",
+    "assurance automobile",
+    "cabinet d'expertise automobile",
+]
+
 ZONES = {
     "75": [f"Paris {n}e" if n > 1 else "Paris 1er" for n in range(1, 21)],
     "77": ["Meaux", "Chelles", "Melun", "Pontault-Combault", "Savigny-le-Temple",

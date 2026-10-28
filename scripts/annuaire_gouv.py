@@ -62,6 +62,13 @@ EXCLURE_PREFIXES = (
     "96.02",  # coiffure et soins de beaute
 )
 
+# Campagne "assurance" : uniquement assureurs (NAF 65.x) et courtiers/agents d'assurance (66.2x).
+if os.environ.get("CAMPAGNE", "").strip().lower() == "assurance":
+    SECTIONS = [("K", "Assurance / courtage / assistance")]
+    GARDER_PREFIXES = ("65.", "66.2")
+else:
+    GARDER_PREFIXES = ()
+
 GEO_API = "https://geo.api.gouv.fr/communes"
 RECHERCHE_API = "https://recherche-entreprises.api.gouv.fr/search"
 PAGES_MAX = 12  # jusqu'a 300 entreprises actives par commune et par section
@@ -119,6 +126,8 @@ def entreprises(code_commune, section):
 
 def exclue(res):
     code = res.get("activite_principale") or ""
+    if GARDER_PREFIXES and not code.startswith(GARDER_PREFIXES):
+        return True
     return any(code.startswith(p) for p in EXCLURE_PREFIXES)
 
 

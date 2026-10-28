@@ -10,6 +10,11 @@ on:
     types: [completed]
   workflow_dispatch:
     inputs:
+      campagne:
+        description: "Campagne à fusionner : cordiste / taxi / assurance"
+        type: choice
+        options: [cordiste, taxi, assurance]
+        default: cordiste
       runs:
         description: "Optionnel : id des recherches à fusionner, séparés par des espaces (vide = automatique)"
         default: ""
@@ -31,18 +36,34 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       runs: ${{ steps.v.outputs.runs }}
+      campagne: ${{ steps.v.outputs.campagne }}
     steps:
       - id: v
         env:
           GH_TOKEN: ${{ github.token }}
           RUNS: ${{ github.event.inputs.runs }}
+          CAMPAGNE_IN: ${{ github.event.inputs.campagne }}
+          TITRE_DECLENCHEUR: ${{ github.event.workflow_run.display_title }}
         run: |
+          # Campagne : choisie a la main, sinon deduite du titre de la recherche qui vient de finir
+          C="$CAMPAGNE_IN"
+          if [ -z "$C" ]; then
+            case "$TITRE_DECLENCHEUR" in
+              ASSURANCE*) C=assurance ;;
+              TAXI*) C=taxi ;;
+              *) C=cordiste ;;
+            esac
+          fi
+          echo "campagne=$C" >> "$GITHUB_OUTPUT"
+          export C
           if [ -n "$RUNS" ]; then echo "runs=$RUNS" >> "$GITHUB_OUTPUT"; exit 0; fi
           gh run list -R "$GITHUB_REPOSITORY" -w prospection.yml -L 30 \
-            --json databaseId,status,conclusion,createdAt > runs.json
+            --json databaseId,status,conclusion,createdAt,displayTitle > runs.json
           python3 - <<'EOF' >> "$GITHUB_OUTPUT"
-          import json, datetime
-          runs = json.load(open("runs.json"))
+          import json, datetime, os
+          PREFIXE = {"assurance": "ASSURANCE", "taxi": "TAXI", "cordiste": "Cordiste"}[os.environ["C"]]
+          # on ne fusionne que les recherches de la meme campagne (jamais assurance + cordiste melanges)
+          runs = [r for r in json.load(open("runs.json")) if r.get("displayTitle", "").startswith(PREFIXE)]
           now = datetime.datetime.now(datetime.timezone.utc)
           recent = [r for r in runs if now - datetime.datetime.fromisoformat(r["createdAt"].replace("Z", "+00:00")) < datetime.timedelta(hours=36)]
           en_cours = [r for r in recent if r["status"] != "completed"]
@@ -104,7 +125,12 @@ jobs:
 
       - name: Construire le fichier Excel (sans doublons)
         run: |
-          FICHIER="prospects-cordiste-fibrociment-IDF-FINAL-$(date +%Y-%m-%d).xlsx"
+          case "${{ needs.verifier.outputs.campagne }}" in
+            assurance) NOM="prospects-assurances-assistance-taxi" ;;
+            taxi) NOM="prospects-taxi-marne-la-vallee" ;;
+            *) NOM="prospects-cordiste-fibrociment-IDF" ;;
+          esac
+          FICHIER="$NOM-FINAL-$(date +%Y-%m-%d).xlsx"
           echo "FICHIER=$FICHIER" >> "$GITHUB_ENV"
           python scripts/build_excel.py enrichi "$FICHIER"
           echo "### Résultat" >> "$GITHUB_STEP_SUMMARY"
@@ -116,4 +142,5 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           MAIL_TO: ${{ secrets.MAIL_TO }}
           MAIL_TITRE: "FICHIER FINAL COMBINE"
+          MAIL_SUJET: ${{ needs.verifier.outputs.campagne == 'assurance' && 'Prospects assurances / assisteurs (taxi)' || (needs.verifier.outputs.campagne == 'taxi' && 'Prospects Taxi Marne-la-Vallee' || 'Prospects cordiste fibrociment IDF') }}
         run: python scripts/send_email.py "$FICHIER"

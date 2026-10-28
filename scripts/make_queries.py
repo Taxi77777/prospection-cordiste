@@ -11,11 +11,16 @@ Usage :
 Chaque requete : "<metier> <commune> <dep>#!#<dep>|<metier>|<commune>"
 """
 import json
+import os
 import sys
 import time
 import urllib.request
 
-from zones import METIERS, ZONES
+from zones import METIERS, METIERS_ASSURANCE, ZONES
+
+# Campagne choisie dans le workflow (cordiste / taxi / assurance) : fixe la liste de metiers par defaut.
+CAMPAGNE = os.environ.get("CAMPAGNE", "").strip().lower()
+METIERS_DEFAUT = METIERS_ASSURANCE if CAMPAGNE == "assurance" else METIERS
 
 SEUIL_GRANDE = 15000
 TAILLE_LOT = {"g": 120, "p": 360}  # requetes par lot
@@ -39,7 +44,7 @@ def communes(dep):
 
 
 def requetes(dep, classe, metiers=None):
-    metiers = metiers or METIERS
+    metiers = metiers or METIERS_DEFAUT
     lignes = []
     dep_recherche = "77" if dep == "77mlv" else dep
     for ville, pop in communes(dep):

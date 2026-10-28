@@ -1,5 +1,5 @@
 name: Prospection B2B (Google Maps -> Excel -> e-mail)
-run-name: "${{ contains(github.event.inputs.departements, '77mlv') && 'TAXI Marne-la-Vallee' || 'Cordiste fibrociment' }} (${{ github.event.inputs.departements }})"
+run-name: "${{ github.event.inputs.campagne == 'assurance' && 'ASSURANCE assistance taxi' || (contains(github.event.inputs.departements, '77mlv') && 'TAXI Marne-la-Vallee' || 'Cordiste fibrociment') }} (${{ github.event.inputs.departements }})"
 
 # Quand cette recherche est finie, le workflow "Excel final combine" se lance tout seul :
 # il fusionne les resultats, complete les e-mails et envoie UN seul Excel.
@@ -7,6 +7,11 @@ run-name: "${{ contains(github.event.inputs.departements, '77mlv') && 'TAXI Marn
 on:
   workflow_dispatch:
     inputs:
+      campagne:
+        description: "Campagne : cordiste (syndics, bailleurs...) / taxi / assurance (assureurs, assisteurs, courtiers, mutuelles)"
+        type: choice
+        options: [cordiste, taxi, assurance]
+        default: cordiste
       departements:
         description: "Départements à scraper (JSON)"
         default: '["75","92","93","94","77","78","91","95"]'
@@ -36,6 +41,7 @@ jobs:
       - uses: actions/checkout@v4
       - id: plan
         env:
+          CAMPAGNE: ${{ github.event.inputs.campagne }}
           METIERS: ${{ github.event.inputs.metiers }}
           LOTS: ${{ github.event.inputs.lots }}
         run: |
@@ -138,6 +144,8 @@ jobs:
           python-version: "3.12"
 
       - name: Interroger l'annuaire officiel (INSEE/Sirene)
+        env:
+          CAMPAGNE: ${{ github.event.inputs.campagne }}
         run: |
           mkdir -p out
           python scripts/annuaire_gouv.py '${{ github.event.inputs.departements }}' out
