@@ -20,8 +20,7 @@ Cordialement,
 Taxi Marne-la-Vallée
 07 50 53 56 58 · contact@taximarnelavallee.com · taximarnelavallee.com
 
-Vous ne souhaitez plus recevoir nos messages ? Se désinscrire
-Taxi Marne-la-Vallée – SIREN 480 853 803 – 13 place Claude Monet, 77400 Saint-Thibault-des-Vignes."""
+Vous ne souhaitez plus recevoir nos messages ? Se désinscrire"""
 
 HTML = """<div style="max-width:600px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#1f2933;">
 <p>Madame, Monsieur,</p>
@@ -36,7 +35,7 @@ HTML = """<div style="max-width:600px;font-family:Arial,Helvetica,sans-serif;fon
 <p>Vous trouverez notre plaquette en pièce jointe. Pouvons-nous être ajoutés à votre liste de prestataires taxi ? Il vous suffit de répondre à ce message ou de nous appeler au <a href="tel:+33750535658" style="color:#1f2933;">07 50 53 56 58</a>.</p>
 <p>Cordialement,</p>
 <p><strong>Taxi Marne-la-Vallée</strong><br>07 50 53 56 58 · <a href="mailto:contact@taximarnelavallee.com" style="color:#1f2933;">contact@taximarnelavallee.com</a> · <a href="https://taximarnelavallee.com" style="color:#1f2933;">taximarnelavallee.com</a></p>
-<p style="font-size:11px;color:#7b8794;margin-top:28px;">Vous ne souhaitez plus recevoir nos messages ? <a href="#" style="color:#7b8794;">Se désinscrire</a><br>Taxi Marne-la-Vallée – SIREN 480 853 803 – 13 place Claude Monet, 77400 Saint-Thibault-des-Vignes.</p>
+<p style="font-size:11px;color:#7b8794;margin-top:28px;">Vous ne souhaitez plus recevoir nos messages ? <a href="#" style="color:#7b8794;">Se désinscrire</a></p>
 </div>"""
 
 
